@@ -16,6 +16,7 @@ public class ChipPocket implements Serializable {
 	public static final int DAILY_BONUS = 1000;
 	private Calendar lastDayGetBonus;
 	private long balance;
+	// if equals zero, means don't play
 	private int bets;
 
 	public ChipPocket() {
@@ -35,32 +36,22 @@ public class ChipPocket implements Serializable {
 		lastDayGetBonus = calendar;
 	}
 
-	public void placeBets(int bets) throws RuntimeException {
-		if (bets > balance) {
-			throw new InsufficentChipException("Balance: " + balance + ", Bets:" + bets);
-		}
-		if (bets < MINIMUM_BETS) {
-			throw new NotEnoughAmountException("Bets: " + bets + ", Minimum: " + MINIMUM_BETS);
-		}
-		if (bets > MAXIMUM_BETS) {
-			throw new TooMuchChipsException("Bets: " + bets + ", Maximum: " + MAXIMUM_BETS);
-		}
-		balance -= bets;
-		this.bets = bets;
-	}
-
 	public long getBalance() {
 		return balance;
 	}
 
 	public int payOut(SlotMachine slotmachine) {
+		if (bets > balance) {
+			throw new InsufficentChipException("Balance: " + balance + ", Bets:" + bets);
+		}
+
+		balance -= bets;
 		int ret = slotmachine.getPayoutRatio() * bets;
 		if (ret > 0) {
 			// if wined, get the bets back
 			ret += bets;
 			balance += ret;
 		}
-		bets = 0;
 		return ret;
 	}
 
@@ -78,4 +69,22 @@ public class ChipPocket implements Serializable {
 		balance -= amount;
 		chipPocket.receiveTransfers(amount);
 	}
+
+	public int getBets() {
+		return bets;
+	}
+
+	public void setBets(int bets) {
+		if (bets != 0 && bets < MINIMUM_BETS) {
+			throw new NotEnoughAmountException("Bets: " + bets + ", Minimum: " + MINIMUM_BETS);
+		}
+		if (bets > MAXIMUM_BETS) {
+			throw new TooMuchChipsException("Bets: " + bets + ", Maximum: " + MAXIMUM_BETS);
+		}
+		if (bets > balance) {
+			throw new InsufficentChipException("Balance: " + balance + ", Transfers:" + bets);
+		}
+		this.bets = bets;
+	}
+
 }
