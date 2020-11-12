@@ -127,14 +127,18 @@ public class SlotBot {
 
 	private static void defaultCallback(TelegramBot bot, Update update) {
 
-		if (update.message() == null)
+		Message message = update.message();
+		if (message == null)
 			return;
 
-		if (update.message().from().isBot())
+		// ignore forwarded message
+		if (message.forwardFrom() != null)
+			return;
+		// ignore message from bot
+		if (message.from().isBot())
 			return;
 
-		Dice dice = update.message().dice();
-
+		Dice dice = message.dice();
 		if (dice != null) {
 			if (dice.emoji().equals("🎰")) {
 				betCallback(bot, update);
