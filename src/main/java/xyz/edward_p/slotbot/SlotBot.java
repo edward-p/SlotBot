@@ -179,11 +179,14 @@ public class SlotBot {
 
 		if (update.message() == null)
 			return;
+
+		if (update.message().from().isBot())
+			return;
+
 		String content = update.message().text();
 		if (content == null)
 			return;
 		String[] slices = content.split(" ");
-
 		String userName = update.message().from().username();
 		System.out.println(userName + ": " + content);
 
@@ -222,8 +225,12 @@ public class SlotBot {
 			String text = "请回复要转帐的用户的消息！";
 			sendText(bot, chatId, messageId, text);
 			return;
+		} else if (replyToMessage.from().isBot()) {
+			String text = "不支持转帐给 Bot！";
+			sendText(bot, chatId, messageId, text);
+			return;
 		} else if (replyToMessage.from().id() == sourceUserId) {
-			String text = "不能转帐给自己！";
+			String text = "不支持转帐给自己！";
 			sendText(bot, chatId, messageId, text);
 			return;
 		}
