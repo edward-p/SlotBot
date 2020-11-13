@@ -31,7 +31,7 @@ dependencies {
 
 jar {
 		manifest { 
-    		attributes "Main-Class": "xyz.edward_p.slotbot.SlotBot"
+    		attributes "Main-Class": "xyz.edward_p.slotbot.Main"
 		}
  		from {
     		configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
