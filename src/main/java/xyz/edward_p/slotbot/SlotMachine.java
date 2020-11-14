@@ -9,9 +9,10 @@ public class SlotMachine {
 	private final static int PART_LEMON = 2;
 	private final static int PART_SEVEN = 3;
 	private final static int PART_INDEX_SIZE = 3;
-	int[] partIndex;
+	private int[] partIndex;
+	private int payOutRatio;
 
-	SlotMachine(int value) {
+	public SlotMachine(int value) {
 		if (value < 1 || value > 64) {
 			throw new UnsupportedValueException("Value: " + value);
 		}
@@ -22,9 +23,10 @@ public class SlotMachine {
 			partIndex[i] = (value - 1) >> (i * 2) & 0b11;
 		}
 
-	}
-
-	public int getPayoutRatio() {
+		/*
+		 * calculating payout ratio (current expectation is 0.78125)
+		 */
+		
 		// for each kind of pattern
 		for (int i = 0; i < 4; i++) {
 			// check if 3-in-a-row
@@ -38,29 +40,37 @@ public class SlotMachine {
 				// 3-in-a-row
 				switch (partIndex[0]) {
 				case PART_BAR:
-					return 10;
+					payOutRatio = 5;
+					return;
 				case PART_BERRIES:
-					return 15;
+					payOutRatio = 10;
+					return;
 				case PART_LEMON:
-					return 20;
+					payOutRatio = 15;
+					return;
 				case PART_SEVEN:
 					// jackpot!
-					return 25;
+					payOutRatio = 20;
+					return;
 				}
 			}
 		}
 
-		// count Sevens, each Seven values 2 in payout ratio
-		int count = 0;
-		for (int i = 0; i < partIndex.length; i++) {
-			if (partIndex[i] == PART_SEVEN) {
-				count++;
-			}
-		}
-		if (count >= 2)
-			return count;
-		else
-			return 0;
+//		// count Sevens, each Seven values 2 in payout ratio
+//		int count = 0;
+//		for (int i = 0; i < partIndex.length; i++) {
+//			if (partIndex[i] == PART_SEVEN) {
+//				count++;
+//			}
+//		}
+//		if (count >= 2) {
+//			payOutRatio = 2;
+//		}
+
+	}
+
+	public int getPayoutRatio() {
+		return payOutRatio;
 	}
 
 	private String getPart(int index) {

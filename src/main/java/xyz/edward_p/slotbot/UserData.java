@@ -97,8 +97,7 @@ public class UserData {
 
 	public static Hashtable<Integer, ChipPocket> getUserDatas() {
 		if (userDatas == null) {
-			System.err.println("Warning: userDatas is not readed from file. Using new Hashtable Object.");
-			userDatas = new Hashtable<Integer, ChipPocket>();
+			readIn(Main.getDataFilePath());
 		}
 		return userDatas;
 	}

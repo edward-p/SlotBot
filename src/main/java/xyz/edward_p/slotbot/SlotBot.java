@@ -1,12 +1,13 @@
 package xyz.edward_p.slotbot;
 
+import java.util.HashMap;
 import java.util.Hashtable;
 
 import com.pengrad.telegrambot.TelegramBot;
-import com.pengrad.telegrambot.model.Dice;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
 import com.pengrad.telegrambot.model.Chat.Type;
+import com.pengrad.telegrambot.model.Dice;
 import com.pengrad.telegrambot.request.GetMe;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.GetMeResponse;
@@ -16,20 +17,30 @@ import xyz.edward_p.slotbot.chippocket.ChipPocket;
 import xyz.edward_p.slotbot.chippocket.GetBonusTwiceException;
 import xyz.edward_p.slotbot.chippocket.InsufficentChipException;
 import xyz.edward_p.slotbot.chippocket.NotEnoughAmountException;
+import xyz.edward_p.slotbot.chippocket.PlayerAlreadyInGameException;
 import xyz.edward_p.slotbot.chippocket.TooMuchChipsException;
+import xyz.edward_p.slotbot.games.Game;
+import xyz.edward_p.slotbot.games.SlotGame;
 
 public class SlotBot {
 	private static TelegramBot bot;
 	private static String botName;
 	private static Hashtable<Integer, ChipPocket> userDatas;
+	private static HashMap<Long, Game> games;
 
-	public static void init(TelegramBot b) {
-		bot = b;
-		getBotname();
-		userDatas = UserData.getUserDatas();
+	public static TelegramBot getBot() {
+		return bot;
 	}
 
-	private static void getBotname() {
+	public static String getBotName() {
+		return botName;
+	}
+
+	static {
+		// get bot from Main
+		bot = Main.getBot();
+
+		// get bot name
 		GetMeResponse getMeResponse;
 		GetMe getMe = new GetMe();
 		System.out.println("Bot is getting me...");
@@ -38,8 +49,11 @@ public class SlotBot {
 			sleep10Secs();
 			getMeResponse = bot.execute(getMe);
 		}
-
 		botName = getMeResponse.user().username();
+
+		games = new HashMap<Long, Game>();
+		// get userDatas
+		userDatas = UserData.getUserDatas();
 	}
 
 	public static void defaultCallback(Update update) {
@@ -47,7 +61,6 @@ public class SlotBot {
 		Message message = update.message();
 		if (message == null)
 			return;
-
 		// ignore forwarded message
 		if (message.forwardFrom() != null)
 			return;
@@ -55,24 +68,24 @@ public class SlotBot {
 		if (message.from().isBot())
 			return;
 
-		Dice dice = message.dice();
-		if (dice != null) {
+		boolean isPrivate = update.message().chat().type().equals(Type.Private);
+
+		Dice dice = update.message().dice();
+		if (isPrivate && dice != null) {
+			// private slot machine
 			switch (dice.emoji()) {
 			case "🎰":
 				betSlotMachineCallback(update);
 				break;
 			}
+			// done
 			return;
 		}
 
-		String content = update.message().text();
-		if (content == null)
+		String text = update.message().text();
+		if (text == null)
 			return;
-		String[] slices = content.split(" ");
-//		String userName = update.message().from().username();
-//		System.out.println(userName + ": " + content);
-
-		boolean isPrivate = update.message().chat().type().equals(Type.Private);
+		String[] slices = text.split(" ");
 
 		if (!isPrivate && !slices[0].matches("^/.*@" + botName)) {
 			return;
@@ -80,28 +93,115 @@ public class SlotBot {
 			slices[0] = slices[0].replaceAll("@" + botName, "");
 		}
 
+		// common
 		switch (slices[0]) {
-		case "/start":
-		case "/help":
-			helpCallback(update);
-			break;
 		case "/setbets":
 			setbetsCallback(update, slices);
-			break;
+			return;
 		case "/getbets":
 			getbetsCallback(update);
-			break;
+			return;
 		case "/bonus":
 			bonusCallback(update);
-			break;
+			return;
 		case "/balance":
 			balanceCallback(update);
-			break;
+			return;
 		case "/transfer":
 			transferCallback(update, slices);
-			break;
+			return;
 		}
+		if (isPrivate) {
+			// private-only features
+			switch (slices[0]) {
+			case "/start":
+			case "/help":
+				helpCallback(update);
+				break;
+			}
+		} else {
+			// group-only features
+			switch (slices[0]) {
+			case "/newgame":
+				newGame(update);
+				break;
+			default:
+				redirect(update);
+				break;
+			}
+		}
+	}
 
+	private static void betSlotMachineCallback(Update update) {
+		long chatId = update.message().chat().id();
+		int messageId = update.message().messageId();
+		int userId = update.message().from().id();
+
+		ChipPocket pocket = getPocketByUserId(userId);
+		if (pocket.getBets() == 0) {
+			return;
+		}
+		try {
+			SlotMachine slot = new SlotMachine(update.message().dice().value());
+			int payOut = pocket.payOut(slot);
+			String text;
+			if (payOut != 0) {
+				text = "恭喜获得: " + payOut + "个筹码！\n当前账户: " + pocket.getBalance();
+			} else {
+				text = "下次好运~\n当前账户: " + pocket.getBalance();
+				if (pocket.getBets() > pocket.getBalance()) {
+					pocket.setBets(0);
+					text += "\n当前赌注大于余额, 已被重置为 0\n使用 /setbets 重新设置赌注";
+				}
+			}
+			// Will loop until success
+			sendText(chatId, messageId, text);
+		} catch (InsufficentChipException e) {
+			pocket.setBets(0);
+			String text = "筹码不足, 未下注\n赌注已经被重置为 0\n通过 /setbets 设置赌注\n通过 /bonus 来获得每日奖励筹码";
+			sendText(chatId, messageId, text);
+		}
+	}
+
+	/**
+	 * redirect update to specific game
+	 * 
+	 * @param update
+	 */
+	private static void redirect(Update update) {
+		long chatId = update.message().chat().id();
+		int messageId = update.message().messageId();
+		Game game = games.get(chatId);
+		if (game == null) {
+			sendText(chatId, messageId, "当前没有在进行的游戏, 使用 /newgame 创建一个新游戏");
+			return;
+		}
+		game.addUpdates(update);
+	}
+
+	/**
+	 * Start a new game, use HashMap<Long, Game> games to sore (chatId, game) use
+	 * .start() to start the game thread with a callback method witch removes game
+	 * instance from games on thread exit
+	 * 
+	 * @param update
+	 */
+	private static void newGame(Update update) {
+		long chatId = update.message().chat().id();
+		int messageId = update.message().messageId();
+		if (games.containsKey(chatId)) {
+			String text = "当前游戏还在进行中!";
+			sendText(chatId, messageId, text);
+			return;
+		}
+		Game game = new SlotGame(bot, userDatas);
+		game.addUpdates(update);
+		
+		game.start(() -> {
+			// remove game on thread exit
+			games.remove(chatId);
+		});
+		games.put(chatId, game);
 	}
 
 	private static void helpCallback(Update update) {
@@ -237,6 +337,9 @@ public class SlotBot {
 		} catch (NumberFormatException e) {
 			String text = String.format("下注值必须为整数, 范围: [%d, %d]", ChipPocket.MINIMUM_BETS, ChipPocket.MAXIMUM_BETS);
 			sendText(chatId, messageId, text);
+		} catch (PlayerAlreadyInGameException e) {
+			String text = "当前玩家正在游戏中，暂时不能设置赌注";
+			sendText(chatId, messageId, text);
 		} catch (InsufficentChipException e) {
 			String text = "筹码不足, 设置失败\n当前账户: " + pocket.getBalance() + "\n或设置为 0, 表示不下注";
 			sendText(chatId, messageId, text);
@@ -245,37 +348,6 @@ public class SlotBot {
 			sendText(chatId, messageId, text);
 		} catch (TooMuchChipsException e) {
 			String text = "设置下注失败, 超过上限:" + ChipPocket.MAXIMUM_BETS;
-			sendText(chatId, messageId, text);
-		}
-	}
-
-	private static void betSlotMachineCallback(Update update) {
-		long chatId = update.message().chat().id();
-		int messageId = update.message().messageId();
-		int userId = update.message().from().id();
-
-		ChipPocket pocket = getPocketByUserId(userId);
-		if (pocket.getBets() == 0) {
-			return;
-		}
-		try {
-			SlotMachine slot = new SlotMachine(update.message().dice().value());
-			int payOut = pocket.payOut(slot);
-			String text;
-			if (payOut != 0) {
-				text = "恭喜获得: " + payOut + "个筹码！\n当前账户: " + pocket.getBalance();
-			} else {
-				text = "下次好运~\n当前账户: " + pocket.getBalance();
-				if (pocket.getBets() > pocket.getBalance()) {
-					pocket.setBets(0);
-					text += "\n当前赌注大于余额, 已被重置为 0\n使用 /setbets 重新设置赌注";
-				}
-			}
-			// Will loop until success
-			sendText(chatId, messageId, text);
-		} catch (InsufficentChipException e) {
-			pocket.setBets(0);
-			String text = "筹码不足, 未下注\n赌注已经被重置为 0\n通过 /setbets 设置赌注\n通过 /bonus 来获得每日奖励筹码";
 			sendText(chatId, messageId, text);
 		}
 	}

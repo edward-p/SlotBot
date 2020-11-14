@@ -12,21 +12,23 @@ public class ChipPocket implements Serializable {
 	private static final long serialVersionUID = -8997092531803445734L;
 	public static final int MINIMUM_BETS = 10;
 	public static final int MINIMUM_TRANSFER_AMOUNT = 10;
-	public static final int MAXIMUM_BETS = 1000;
+	public static final int MAXIMUM_BETS = 10000;
 	public static final int DAILY_BONUS = 1000;
 	private Calendar lastDayGetBonus;
 	private long balance;
 	// if equals zero, means don't play
 	private int bets;
+	private transient boolean isInGame;
 
 	public ChipPocket() {
 		lastDayGetBonus = Calendar.getInstance();
 		lastDayGetBonus.set(1970, 1, 1);
 		balance = 0;
 		bets = 0;
+		isInGame = false;
 	}
 
-	public void getBonus() {
+	public synchronized void getBonus() {
 		Calendar calendar = Calendar.getInstance();
 		int sum = calendar.get(Calendar.YEAR) - lastDayGetBonus.get(Calendar.YEAR);
 		sum += calendar.get(Calendar.DAY_OF_YEAR) - lastDayGetBonus.get(Calendar.DAY_OF_YEAR);
@@ -40,7 +42,7 @@ public class ChipPocket implements Serializable {
 		return balance;
 	}
 
-	public int payOut(SlotMachine slotmachine) {
+	public synchronized int payOut(SlotMachine slotmachine) {
 		if (bets > balance) {
 			throw new InsufficentChipException("Balance: " + balance + ", Bets:" + bets);
 		}
@@ -55,11 +57,11 @@ public class ChipPocket implements Serializable {
 		return ret;
 	}
 
-	public void receiveTransfers(int amount) {
+	public synchronized void receiveTransfers(int amount) {
 		balance += amount;
 	}
 
-	public void transferTo(int amount, ChipPocket chipPocket) {
+	public synchronized void transferTo(int amount, ChipPocket chipPocket) {
 		if (amount > balance) {
 			throw new InsufficentChipException("Balance: " + balance + ", Transfers:" + amount);
 		}
@@ -74,7 +76,7 @@ public class ChipPocket implements Serializable {
 		return bets;
 	}
 
-	public void setBets(int bets) {
+	public synchronized void setBets(int bets) {
 		if (bets != 0 && bets < MINIMUM_BETS) {
 			throw new NotEnoughAmountException("Bets: " + bets + ", Minimum: " + MINIMUM_BETS);
 		}
@@ -84,7 +86,18 @@ public class ChipPocket implements Serializable {
 		if (bets > balance) {
 			throw new InsufficentChipException("Balance: " + balance + ", Transfers:" + bets);
 		}
+		if (isInGame) {
+			throw new PlayerAlreadyInGameException("");
+		}
 		this.bets = bets;
+	}
+
+	public synchronized boolean isInGame() {
+		return isInGame;
+	}
+
+	public synchronized void setInGame(boolean isInGame) {
+		this.isInGame = isInGame;
 	}
 
 }

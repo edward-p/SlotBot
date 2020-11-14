@@ -5,6 +5,16 @@ import com.pengrad.telegrambot.UpdatesListener;
 import com.pengrad.telegrambot.model.Update;
 
 public class Main {
+	private static TelegramBot bot;
+	private static String dataFilePath;
+
+	public static TelegramBot getBot() {
+		return bot;
+	}
+
+	public static String getDataFilePath() {
+		return dataFilePath;
+	}
 
 	private static void printUsage() {
 		System.out.print("Usage:\n\t");
@@ -25,22 +35,13 @@ public class Main {
 			return;
 		}
 
-		final String dataFilePath = args[1];
-
-		// read data in from file
-		UserData.readIn(dataFilePath);
-
-		TelegramBot bot = new TelegramBot(token);
-
-		// init static virables for SlotBot
-		SlotBot.init(bot);
-
+		dataFilePath = args[1];
+		
+		bot = new TelegramBot(token);
 		bot.setUpdatesListener(updates -> {
 			// ... process updates
 			for (Update update : updates) {
-				new Thread(() -> {
-					SlotBot.defaultCallback(update);
-				}).start();
+				SlotBot.defaultCallback(update);
 			}
 			// return id of last processed update or confirm them all
 			return UpdatesListener.CONFIRMED_UPDATES_ALL;
@@ -48,6 +49,7 @@ public class Main {
 
 		System.out.println("Listener started.");
 
+		
 		// save data to file on exit
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
