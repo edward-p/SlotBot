@@ -12,6 +12,7 @@ import xyz.edward_p.slotbot.SlotBot;
 import xyz.edward_p.slotbot.SlotMachine;
 import xyz.edward_p.slotbot.chippocket.ChipPocket;
 import xyz.edward_p.slotbot.chippocket.InsufficentChipException;
+import xyz.edward_p.slotbot.chippocket.PlayerAlreadyInGameException;
 
 public class SlotGame extends Game {
 
@@ -90,6 +91,9 @@ public class SlotGame extends Game {
 				return;
 			}
 			String text = "@" + userName + " 未设置赌注，请先使用 /setbets 设置赌注再 /join";
+			sendText(chatId, text);
+		} catch (PlayerAlreadyInGameException e) {
+			String text = "@" + userName + " 已经在游戏中";
 			sendText(chatId, text);
 		}
 	}
