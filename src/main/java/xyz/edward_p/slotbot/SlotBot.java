@@ -141,6 +141,10 @@ public class SlotBot {
 		if (pocket.getBets() == 0) {
 			return;
 		}
+		if (pocket.isInGame()) {
+			sendText(chatId, messageId, "玩家还在多人游戏中, 当前玩法不可用");
+			return;
+		}
 		try {
 			SlotMachine slot = new SlotMachine(update.message().dice().value());
 			int payOut = pocket.payOut(slot.getPayoutRatio());
@@ -323,7 +327,7 @@ public class SlotBot {
 		long chatId = update.message().chat().id();
 		int messageId = update.message().messageId();
 		int userId = update.message().from().id();
-
+			
 		if (args.length < 2) {
 			String text = "请给出下注数量！";
 			sendText(chatId, messageId, text);
