@@ -1,9 +1,6 @@
 package xyz.edward_p.slotbot.chippocket;
 
 import java.io.Serializable;
-import java.util.Calendar;
-
-import xyz.edward_p.slotbot.SlotMachine;
 
 public class ChipPocket implements Serializable {
 	/**
@@ -13,42 +10,39 @@ public class ChipPocket implements Serializable {
 	public static final int MINIMUM_BETS = 10;
 	public static final int MINIMUM_TRANSFER_AMOUNT = 10;
 	public static final int MAXIMUM_BETS = 10000;
-	public static final int DAILY_BONUS = 1000;
-	private Calendar lastDayGetBonus;
+	public static final int BONUS = 10000;
+	public static final int BONUS_CD = 360000;
+	private long lastTimeGetBonus;
 	private long balance;
 	// if equals zero, means don't play
 	private int bets;
 	private transient boolean isInGame;
 
 	public ChipPocket() {
-		lastDayGetBonus = Calendar.getInstance();
-		lastDayGetBonus.set(1970, 1, 1);
+		lastTimeGetBonus = 0;
 		balance = 0;
 		bets = 0;
 		isInGame = false;
 	}
 
 	public synchronized void getBonus() {
-		Calendar calendar = Calendar.getInstance();
-		int sum = calendar.get(Calendar.YEAR) - lastDayGetBonus.get(Calendar.YEAR);
-		sum += calendar.get(Calendar.DAY_OF_YEAR) - lastDayGetBonus.get(Calendar.DAY_OF_YEAR);
-		if (sum == 0)
-			throw new GetBonusTwiceException("Get bonus twice in a day.");
-		balance += DAILY_BONUS;
-		lastDayGetBonus = calendar;
+		if (System.currentTimeMillis() - lastTimeGetBonus < BONUS_CD)
+			throw new GetBonusTooOftenException("Bonus is in CD.");
+		balance += BONUS;
+		lastTimeGetBonus = System.currentTimeMillis();
 	}
 
 	public long getBalance() {
 		return balance;
 	}
 
-	public synchronized int payOut(SlotMachine slotmachine) {
+	public synchronized int payOut(int ratio) {
 		if (bets > balance) {
 			throw new InsufficentChipException("Balance: " + balance + ", Bets:" + bets);
 		}
 
 		balance -= bets;
-		int ret = slotmachine.getPayoutRatio() * bets;
+		int ret = ratio * bets;
 		if (ret > 0) {
 			// if wined, get the bets back
 			ret += bets;
@@ -100,4 +94,7 @@ public class ChipPocket implements Serializable {
 		this.isInGame = isInGame;
 	}
 
+	public long getLastTimeGetBonus() {
+		return lastTimeGetBonus;
+	}
 }

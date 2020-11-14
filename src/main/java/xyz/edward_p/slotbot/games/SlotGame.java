@@ -125,7 +125,7 @@ public class SlotGame extends Game {
 			String name = players.get(p);
 			try {
 				String text;
-				int payOut = pocket.payOut(slot);
+				int payOut = pocket.payOut(slot.getPayoutRatio());
 				if (payOut != 0) {
 					text = "恭喜 @" + name + " 获得: " + payOut + "个筹码！\n当前账户: " + pocket.getBalance();
 				} else {

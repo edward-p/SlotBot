@@ -14,7 +14,7 @@ import com.pengrad.telegrambot.response.GetMeResponse;
 import com.pengrad.telegrambot.response.SendResponse;
 
 import xyz.edward_p.slotbot.chippocket.ChipPocket;
-import xyz.edward_p.slotbot.chippocket.GetBonusTwiceException;
+import xyz.edward_p.slotbot.chippocket.GetBonusTooOftenException;
 import xyz.edward_p.slotbot.chippocket.InsufficentChipException;
 import xyz.edward_p.slotbot.chippocket.NotEnoughAmountException;
 import xyz.edward_p.slotbot.chippocket.PlayerAlreadyInGameException;
@@ -143,7 +143,7 @@ public class SlotBot {
 		}
 		try {
 			SlotMachine slot = new SlotMachine(update.message().dice().value());
-			int payOut = pocket.payOut(slot);
+			int payOut = pocket.payOut(slot.getPayoutRatio());
 			String text;
 			if (payOut != 0) {
 				text = "恭喜获得: " + payOut + "个筹码！\n当前账户: " + pocket.getBalance();
@@ -196,7 +196,7 @@ public class SlotBot {
 		}
 		Game game = new SlotGame(bot, userDatas);
 		game.addUpdates(update);
-		
+
 		game.start(() -> {
 			// remove game on thread exit
 			games.remove(chatId);
@@ -310,10 +310,11 @@ public class SlotBot {
 		ChipPocket pocket = getPocketByUserId(userId);
 		try {
 			pocket.getBonus();
-			String text = "签到成功，获得: " + ChipPocket.DAILY_BONUS + "个筹码,\n当前账户: " + pocket.getBalance();
+			String text = "签到成功，获得: " + ChipPocket.BONUS + "个筹码,\n当前账户: " + pocket.getBalance();
 			sendText(chatId, messageId, text);
-		} catch (GetBonusTwiceException e) {
-			String text = "今天已经来过了，明天再来吧～";
+		} catch (GetBonusTooOftenException e) {
+			long timeLeft = ChipPocket.BONUS_CD - (System.currentTimeMillis() - pocket.getLastTimeGetBonus());
+			String text = "还需等待: " + (timeLeft / 1000.0) + " 秒";
 			sendText(chatId, messageId, text);
 		}
 	}
