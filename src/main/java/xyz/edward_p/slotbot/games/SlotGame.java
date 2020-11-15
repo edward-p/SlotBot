@@ -71,7 +71,8 @@ public class SlotGame extends Game {
 			break;
 		case "/roll":
 			if (userId != owner) {
-				sendText(chatId, messageId, "只有当前游戏主人 @" + userName + " 可以使用!");
+				String ownerName = players.get(owner);
+				sendText(chatId, messageId, "只有当前游戏主人 @" + ownerName + " 可以使用!");
 				return;
 			}
 			roll(message);
