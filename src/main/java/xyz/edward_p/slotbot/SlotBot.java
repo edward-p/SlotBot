@@ -27,6 +27,7 @@ public class SlotBot {
 	private static String botName;
 	private static Hashtable<Integer, ChipPocket> userDatas;
 	private static HashMap<Long, Game> games;
+	private static HashMap<Long, Thread> gameThreads;
 
 	public static TelegramBot getBot() {
 		return bot;
@@ -52,6 +53,7 @@ public class SlotBot {
 		botName = getMeResponse.user().username();
 
 		games = new HashMap<Long, Game>();
+		gameThreads = new HashMap<Long, Thread>();
 		// get userDatas
 		userDatas = UserData.getUserDatas();
 	}
@@ -193,19 +195,26 @@ public class SlotBot {
 	private static void newGame(Update update) {
 		long chatId = update.message().chat().id();
 		int messageId = update.message().messageId();
-		if (games.containsKey(chatId)) {
+
+		Thread th = gameThreads.get(chatId);
+		if (th != null && th.isAlive()) {
 			String text = "当前游戏还在进行中!";
 			sendText(chatId, messageId, text);
 			return;
+		} else if (th != null) {
+			gameThreads.remove(chatId);
+			games.remove(chatId);
 		}
 		Game game = new SlotGame(bot, userDatas);
 		game.addUpdates(update);
 
-		game.start(() -> {
+		th = game.start(() -> {
 			// remove game on thread exit
 			games.remove(chatId);
+			gameThreads.remove(chatId);
 		});
 		games.put(chatId, game);
+		gameThreads.put(chatId, th);
 	}
 
 	private static void helpCallback(Update update) {
@@ -327,7 +336,7 @@ public class SlotBot {
 		long chatId = update.message().chat().id();
 		int messageId = update.message().messageId();
 		int userId = update.message().from().id();
-			
+
 		if (args.length < 2) {
 			String text = "请给出下注数量！";
 			sendText(chatId, messageId, text);

@@ -126,14 +126,17 @@ public abstract class Game implements Runnable {
 		}
 	}
 
-	public void start(OnExitCallback callback) {
+	public Thread start(OnExitCallback callback) {
 		if (!isRunning) {
 			this.callback = callback;
-			new Thread(this).start();
+			Thread th = new Thread(this);
+			th.start();
 			isRunning = true;
+			return th;
 //			// debug
 //			System.out.println("game started");
 		}
+		return Thread.currentThread();
 	}
 
 	/**
