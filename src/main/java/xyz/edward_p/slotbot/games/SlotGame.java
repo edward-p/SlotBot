@@ -21,7 +21,7 @@ public class SlotGame extends Game {
 	}
 
 	protected void help(long chatId, int messageId) {
-		String text = "当前游戏: 🎰\n使用 /join 加入游戏\n使用 /leave 离开游戏\n使用 /setbets 设置赌注\n使用 /roll 进行一次游戏";
+		String text = "当前游戏: 🎰\n使用 /join 加入游戏\n使用 /leave 离开游戏\n使用 /roll 进行一次游戏";
 		sendText(chatId, messageId, text);
 	}
 
