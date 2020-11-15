@@ -13,7 +13,7 @@ import xyz.edward_p.slotbot.chippocket.ChipPocket;
 import xyz.edward_p.slotbot.chippocket.PlayerAlreadyInGameException;
 
 public abstract class Game implements Runnable {
-	private static final int CHECK_UPDATES_INTERVAL = 100;
+	private static final int CHECK_UPDATES_INTERVAL = 200;
 	protected boolean isRunning;
 	protected TelegramBot bot;
 	// FIFO to store updates
