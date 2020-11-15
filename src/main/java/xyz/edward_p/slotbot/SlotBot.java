@@ -314,7 +314,7 @@ public class SlotBot {
 		ChipPocket pocket = getPocketByUserId(userId);
 		try {
 			pocket.getBonus();
-			String text = "签到成功，获得: " + ChipPocket.BONUS + "个筹码,\n当前账户: " + pocket.getBalance();
+			String text = "获得: " + ChipPocket.BONUS + "个筹码,\n当前账户: " + pocket.getBalance();
 			sendText(chatId, messageId, text);
 		} catch (GetBonusTooOftenException e) {
 			long timeLeft = ChipPocket.BONUS_CD - (System.currentTimeMillis() - pocket.getLastTimeGetBonus());

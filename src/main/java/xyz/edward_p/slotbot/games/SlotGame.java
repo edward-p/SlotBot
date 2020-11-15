@@ -135,10 +135,6 @@ public class SlotGame extends Game {
 					text = "恭喜 @" + name + " 获得: " + payOut + "个筹码！\n当前账户: " + pocket.getBalance();
 				} else {
 					text = "@" + name + " 下次好运~\n当前账户: " + pocket.getBalance();
-					if (pocket.getBets() > pocket.getBalance()) {
-						pocket.setBets(0);
-						text += "\n当前赌注大于余额, 已被重置为 0\n使用 /setbets 重新设置赌注";
-					}
 				}
 				// Will loop until success
 				sendText(chatId, text);
@@ -149,6 +145,11 @@ public class SlotGame extends Game {
 			} finally {
 				// set player status
 				pocket.setInGame(false);
+				if (pocket.getBets() > pocket.getBalance()) {
+					pocket.setBets(0);
+					String text = "@" + name + "当前赌注大于余额, 已被重置为 0\n使用 /setbets 重新设置赌注";
+					sendText(chatId, text);
+				}
 			}
 		}
 
