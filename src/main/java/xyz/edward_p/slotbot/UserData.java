@@ -34,13 +34,11 @@ public class UserData {
 	public static void readIn(String path) {
 		try (FileInputStream in = new FileInputStream(path); ObjectInputStream ois = new ObjectInputStream(in)) {
 			Object obj = null;
-			try {
-				obj = ois.readObject();
-				userDatas = (Hashtable<Integer, ChipPocket>) obj;
-			} catch (ClassNotFoundException e) {
-				// user data not found
-				userDatas = new Hashtable<Integer, ChipPocket>();
-			}
+			obj = ois.readObject();
+			userDatas = (Hashtable<Integer, ChipPocket>) obj;
+		} catch (ClassNotFoundException e) {
+			// user data not found
+			userDatas = new Hashtable<Integer, ChipPocket>();
 		} catch (FileNotFoundException e) {
 			// create new user hashtable
 			userDatas = new Hashtable<Integer, ChipPocket>();
