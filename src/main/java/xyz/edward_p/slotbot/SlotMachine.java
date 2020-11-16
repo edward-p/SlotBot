@@ -24,7 +24,7 @@ public class SlotMachine {
 		}
 
 		/*
-		 * calculating payout ratio (current expectation is 0.78125)
+		 * calculating payout ratio (current expectation is 1)
 		 */
 		
 		// for each kind of pattern
@@ -43,14 +43,14 @@ public class SlotMachine {
 					payOutRatio = 5;
 					return;
 				case PART_BERRIES:
-					payOutRatio = 10;
+					payOutRatio = 15;
 					return;
 				case PART_LEMON:
-					payOutRatio = 15;
+					payOutRatio = 20;
 					return;
 				case PART_SEVEN:
 					// jackpot!
-					payOutRatio = 20;
+					payOutRatio = 24;
 					return;
 				}
 			}
