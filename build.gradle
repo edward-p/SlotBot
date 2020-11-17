@@ -29,6 +29,10 @@ dependencies {
     testImplementation 'junit:junit:4.12'
 }
 
+apply plugin: 'java'
+apply plugin: 'application'
+mainClassName = 'xyz.edward_p.slotbot.Main'
+
 jar {
 		manifest { 
     		attributes "Main-Class": "xyz.edward_p.slotbot.Main"
