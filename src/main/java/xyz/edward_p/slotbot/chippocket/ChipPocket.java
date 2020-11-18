@@ -17,6 +17,7 @@ public class ChipPocket implements Serializable {
 	// if equals zero, means don't play
 	private int bets;
 	private transient boolean isInGame;
+	private transient long currentGame;
 
 	public ChipPocket() {
 		lastTimeGetBonus = 0;
@@ -81,7 +82,7 @@ public class ChipPocket implements Serializable {
 			throw new InsufficentChipException("Balance: " + balance + ", Transfers:" + bets);
 		}
 		if (isInGame) {
-			throw new PlayerAlreadyInGameException("");
+			throw new AlreadyInGameException("");
 		}
 		this.bets = bets;
 	}
@@ -96,5 +97,19 @@ public class ChipPocket implements Serializable {
 
 	public long getLastTimeGetBonus() {
 		return lastTimeGetBonus;
+	}
+
+	public synchronized long getCurrentGame() {
+		if (!isInGame) {
+			throw new NotInGameException("currently not in game");
+		}
+		return currentGame;
+	}
+
+	public synchronized void setCurrentGame(long currentGame) {
+		if (isInGame) {
+			throw new AlreadyInGameException("Already in game:" + currentGame);
+		}
+		this.currentGame = currentGame;
 	}
 }
