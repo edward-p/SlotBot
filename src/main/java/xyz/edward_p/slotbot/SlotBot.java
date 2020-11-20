@@ -4,20 +4,25 @@ import java.util.HashMap;
 import java.util.Hashtable;
 
 import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.model.Chat.Type;
+import com.pengrad.telegrambot.model.ChosenInlineResult;
+import com.pengrad.telegrambot.model.Dice;
+import com.pengrad.telegrambot.model.InlineQuery;
 import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
-import com.pengrad.telegrambot.model.Chat.Type;
-import com.pengrad.telegrambot.model.Dice;
+import com.pengrad.telegrambot.model.request.InlineQueryResultArticle;
+import com.pengrad.telegrambot.request.AnswerInlineQuery;
 import com.pengrad.telegrambot.request.GetMe;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.GetMeResponse;
 import com.pengrad.telegrambot.response.SendResponse;
 
+import xyz.edward_p.slotbot.chippocket.AlreadyInGameException;
 import xyz.edward_p.slotbot.chippocket.ChipPocket;
 import xyz.edward_p.slotbot.chippocket.GetBonusTooOftenException;
 import xyz.edward_p.slotbot.chippocket.InsufficentChipException;
 import xyz.edward_p.slotbot.chippocket.NotEnoughAmountException;
-import xyz.edward_p.slotbot.chippocket.PlayerAlreadyInGameException;
+import xyz.edward_p.slotbot.chippocket.NotInGameException;
 import xyz.edward_p.slotbot.chippocket.TooMuchChipsException;
 import xyz.edward_p.slotbot.games.Game;
 import xyz.edward_p.slotbot.games.SlotGame;
@@ -60,9 +65,22 @@ public class SlotBot {
 
 	public static void defaultCallback(Update update) {
 
+		if (update.inlineQuery() != null || update.chosenInlineResult() != null) {
+			// redirect inline to games
+			redirect(update);
+			return;
+		}
+
 		Message message = update.message();
 		if (message == null)
 			return;
+
+		if (update.message().viaBot() != null) {
+			// inline message games
+			redirect(update);
+			return;
+		}
+
 		// ignore forwarded message
 		if (message.forwardFrom() != null)
 			return;
@@ -85,6 +103,8 @@ public class SlotBot {
 		}
 
 		String text = update.message().text();
+//		// debug
+//		System.out.println(text);
 		if (text == null)
 			return;
 		String[] slices = text.split(" ");
@@ -174,14 +194,54 @@ public class SlotBot {
 	 * 
 	 * @param update
 	 */
+	/**
+	 * @param update
+	 */
 	private static void redirect(Update update) {
-		long chatId = update.message().chat().id();
-		int messageId = update.message().messageId();
-		Game game = games.get(chatId);
-		if (game == null) {
-			sendText(chatId, messageId, "当前没有在进行的游戏, 使用 /newgame 创建一个新游戏");
-			return;
+		long chatId = -1;
+		int userId = -1;
+
+		InlineQuery inlineQuery = update.inlineQuery();
+		ChosenInlineResult chosenInlineResult = update.chosenInlineResult();
+		Message message = update.message();
+
+		if (inlineQuery != null) {
+			userId = inlineQuery.from().id();
+		} else if (chosenInlineResult != null) {
+			userId = chosenInlineResult.from().id();
+		} else if (message != null) {
+			userId = message.from().id();
 		}
+
+		ChipPocket pocket = getPocketByUserId(userId);
+		try {
+			chatId = pocket.getCurrentGame();
+		} catch (NotInGameException e) {
+
+			if (inlineQuery != null) {
+				InlineQueryResultArticle r1 = new InlineQueryResultArticle("notInGame", "当前没有加入任何游戏",
+						"使用 /newgame 创建游戏或使用 /join 加入当前游戏");
+				bot.execute(new AnswerInlineQuery(inlineQuery.id(), r1).cacheTime(1).isPersonal(true));
+				return;
+			} else if (message != null) {
+				chatId = message.chat().id();
+				int messageId = message.messageId();
+				Game game = games.get(chatId);
+				if (game == null) {
+					sendText(chatId, messageId, "当前没有进行的游戏, 使用 /newgame 创建一个新游戏");
+					return;
+				} else if (message.text().matches("/join.*")) {
+					game.addUpdates(update);
+					return;
+				} else {
+					sendText(chatId, messageId, "使用 /newgame 创建游戏或使用 /join 加入当前游戏");
+					return;
+				}
+			} else {
+				return;
+			}
+		}
+		Game game = games.get(chatId);
 		game.addUpdates(update);
 	}
 
@@ -205,7 +265,7 @@ public class SlotBot {
 			gameThreads.remove(chatId);
 			games.remove(chatId);
 		}
-		Game game = new SlotGame(bot, userDatas);
+		Game game = new SlotGame(bot, chatId, userDatas);
 		game.addUpdates(update);
 
 		th = game.start(() -> {
@@ -294,7 +354,7 @@ public class SlotBot {
 	}
 
 	private static ChipPocket getPocketByUserId(int userId) {
-		ChipPocket pocket = null;
+		ChipPocket pocket;
 		if (userDatas.containsKey(userId)) {
 			pocket = userDatas.get(userId);
 		} else {
@@ -351,7 +411,7 @@ public class SlotBot {
 		} catch (NumberFormatException e) {
 			String text = String.format("下注值必须为整数, 范围: [%d, %d]", ChipPocket.MINIMUM_BETS, ChipPocket.MAXIMUM_BETS);
 			sendText(chatId, messageId, text);
-		} catch (PlayerAlreadyInGameException e) {
+		} catch (AlreadyInGameException e) {
 			String text = "当前玩家正在游戏中，暂时不能设置赌注";
 			sendText(chatId, messageId, text);
 		} catch (InsufficentChipException e) {

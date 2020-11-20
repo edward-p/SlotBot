@@ -5,23 +5,27 @@ import java.util.Hashtable;
 import java.util.LinkedList;
 
 import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.model.Message;
 import com.pengrad.telegrambot.model.Update;
+import com.pengrad.telegrambot.model.request.InlineKeyboardButton;
+import com.pengrad.telegrambot.model.request.InlineKeyboardMarkup;
 import com.pengrad.telegrambot.request.SendMessage;
 import com.pengrad.telegrambot.response.SendResponse;
 
 import xyz.edward_p.slotbot.chippocket.ChipPocket;
-import xyz.edward_p.slotbot.chippocket.PlayerAlreadyInGameException;
+import xyz.edward_p.slotbot.chippocket.AlreadyInGameException;
 
 public abstract class Game implements Runnable {
 	private static final int CHECK_UPDATES_INTERVAL = 200;
 	protected boolean isRunning;
 	protected TelegramBot bot;
+	protected long chatId;
 	// FIFO to store updates
 	protected LinkedList<Update> updates;
 	// All players
 	protected Hashtable<Integer, ChipPocket> userDatas;
 	// Joined players
-	protected HashMap<Integer, String> players;
+	protected HashMap<Integer, Message> playerMessages;
 	// gameOwner
 	protected int owner;
 
@@ -50,12 +54,13 @@ public abstract class Game implements Runnable {
 //		System.out.println("game ended");
 	}
 
-	protected Game(TelegramBot bot, Hashtable<Integer, ChipPocket> userDatas) {
+	protected Game(TelegramBot bot, long chatId, Hashtable<Integer, ChipPocket> userDatas) {
 		this.isRunning = false;
 		this.bot = bot;
+		this.chatId = chatId;
 		this.userDatas = userDatas;
 		this.updates = new LinkedList<Update>();
-		this.players = new HashMap<Integer, String>();
+		this.playerMessages = new HashMap<Integer, Message>();
 	}
 
 	public synchronized void addUpdates(Update update) {
@@ -77,24 +82,41 @@ public abstract class Game implements Runnable {
 		return pocket;
 	}
 
-	protected void addPlayer(Integer userId, String userName) {
+	protected void addPlayer(Integer userId, Message message) throws AlreadyInGameException {
 		ChipPocket pocket = getPocketByUserId(userId);
 		if (pocket.getBets() == 0) {
 			throw new BetsNotSetException("Player: " + userId);
 		}
 		if (pocket.isInGame()) {
-			throw new PlayerAlreadyInGameException("Player: " + userId);
+			throw new AlreadyInGameException("Player: " + userId);
 		}
 		// set player status
+		pocket.setCurrentGame(message.chat().id());
 		pocket.setInGame(true);
-		players.put(userId, userName);
+		playerMessages.put(userId, message);
 	}
 
-	protected String removePlayer(Integer userId) {
+	protected Message removePlayer(Integer userId) {
 		ChipPocket pocket = getPocketByUserId(userId);
 		// set player status
 		pocket.setInGame(false);
-		return players.remove(userId);
+		return playerMessages.remove(userId);
+	}
+
+	protected void replyJoined(long chatId, int messageId) {
+		SendMessage message = new SendMessage(chatId, "已加入游戏");
+		message.replyToMessageId(messageId);
+		message.replyMarkup(new InlineKeyboardMarkup(new InlineKeyboardButton("下注").switchInlineQueryCurrentChat("")));
+
+		SendResponse response = bot.execute(message);
+		while (!response.isOk() && !Thread.interrupted()) {
+			try {
+				Thread.sleep(10000);
+			} catch (InterruptedException e) {
+				break;
+			}
+			response = bot.execute(message);
+		}
 	}
 
 	protected void sendText(long chatId, String text) {
