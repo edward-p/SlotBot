@@ -30,6 +30,7 @@ import xyz.edward_p.slotbot.games.SlotGame;
 public class SlotBot {
 	private static TelegramBot bot;
 	private static String botName;
+	private static int botUid;
 	private static Hashtable<Integer, ChipPocket> userDatas;
 	private static HashMap<Long, Game> games;
 	private static HashMap<Long, Thread> gameThreads;
@@ -56,6 +57,7 @@ public class SlotBot {
 			getMeResponse = bot.execute(getMe);
 		}
 		botName = getMeResponse.user().username();
+		botUid = getMeResponse.user().id();
 
 		games = new HashMap<Long, Game>();
 		gameThreads = new HashMap<Long, Thread>();
@@ -75,7 +77,7 @@ public class SlotBot {
 		if (message == null)
 			return;
 
-		if (update.message().viaBot() != null) {
+		if (update.message().viaBot() != null && update.message().viaBot().id() == botUid) {
 			// inline message games
 			redirect(update);
 			return;
