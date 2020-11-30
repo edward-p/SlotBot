@@ -3,20 +3,20 @@ package xyz.edward_p.slotbot;
 import xyz.edward_p.slotbot.chippocket.UnsupportedValueException;
 
 public class SlotMachine {
-	private int value;
 	public final static int PART_BAR = 0;
 	public final static int PART_BERRIES = 1;
 	public final static int PART_LEMON = 2;
 	public final static int PART_SEVEN = 3;
 	public final static int PART_INDEX_SIZE = 3;
-	private int[] partIndexs;
+//	private final int value;
+	private final int[] partIndexs;
 	private int payOutRatio;
 
 	public SlotMachine(int value) {
 		if (value < 1 || value > 64) {
 			throw new UnsupportedValueException("Value: " + value);
 		}
-		this.value = value;
+//		this.value = value;
 
 		partIndexs = new int[PART_INDEX_SIZE];
 		for (int i = 0; i < partIndexs.length; i++) {
@@ -38,20 +38,24 @@ public class SlotMachine {
 			}
 			if (j == partIndexs.length - 1) {
 				// 3-in-a-row
+				// jackpot!
 				switch (partIndexs[0]) {
-				case PART_BAR:
-					payOutRatio = 5;
-					return;
-				case PART_BERRIES:
-					payOutRatio = 15;
-					return;
-				case PART_LEMON:
-					payOutRatio = 20;
-					return;
-				case PART_SEVEN:
-					// jackpot!
-					payOutRatio = 24;
-					return;
+					case PART_BAR -> {
+						payOutRatio = 5;
+						return;
+					}
+					case PART_BERRIES -> {
+						payOutRatio = 15;
+						return;
+					}
+					case PART_LEMON -> {
+						payOutRatio = 20;
+						return;
+					}
+					case PART_SEVEN -> {
+						payOutRatio = 24;
+						return;
+					}
 				}
 			}
 		}
@@ -74,18 +78,13 @@ public class SlotMachine {
 	}
 
 	private String getPart(int index) {
-		switch (partIndexs[index]) {
-		case PART_BAR:
-			return "Bar";
-		case PART_BERRIES:
-			return "Berries";
-		case PART_LEMON:
-			return "Lemon";
-		case PART_SEVEN:
-			return "Seven";
-		default:
-			throw new IllegalArgumentException("Unexpected value: " + partIndexs[index]);
-		}
+		return switch (partIndexs[index]) {
+			case PART_BAR -> "Bar";
+			case PART_BERRIES -> "Berries";
+			case PART_LEMON -> "Lemon";
+			case PART_SEVEN -> "Seven";
+			default -> throw new IllegalArgumentException("Unexpected value: " + partIndexs[index]);
+		};
 	}
 
 	@Override
@@ -97,14 +96,14 @@ public class SlotMachine {
 				sb.append(", ");
 			}
 		}
-		sb.append("]");
+		sb.append("], ");
 		sb.append("Payout: ").append(getPayoutRatio());
 		return sb.toString();
 	}
 
-	public int getValue() {
-		return value;
-	}
+//	public int getValue() {
+//		return value;
+//	}
 
 	public int getPartIndex(int index) {
 		return partIndexs[index];
